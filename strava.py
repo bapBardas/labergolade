@@ -1,8 +1,9 @@
 from stravalib.client import Client
-import SheetReaderWriter
+from stravalib.model import Activity
+from collections import deque
+import SheetRW as dbaccess
 import time
 from BergoladeConfig import *
-import json
 # Print nicely
 import pprint
 
@@ -49,7 +50,8 @@ Y8 .    . .  `-._      `--.__|..   @     |      Y8   .  . . . . . . .  .  8Y
    Yo. .     .    .  .oP `--.__`.__|__.'           Yo. .      .      ..oP
     `8o.  .  .  .  .o8'            |                `8o.  .   .   . .o8'
       `Y88booood888P'             =.=                 `Y88boooood888P'
-          """"""                                          """"""" """)
+          \"\"\"\"\"\"                                          \"\"\"\"\"\"\" 
+""")
 
 def print_athlete():
     athlete = client.get_athlete()
@@ -69,22 +71,21 @@ def get_initial_token():
     # check it before making an API call.
     client.token_expires_at = token_response['expires_at']
     # And now we store all that precious in a database
-    SheetReaderWriter.store_access_token(client.access_token,client.token_expires_at,client.refresh_token)
+    dbaccess.store_access_token(client.access_token, client.token_expires_at, client.refresh_token)
 
 
 def check_token():
-    last_token_data=SheetReaderWriter.retrieve_last_token()
+    last_token_data=dbaccess.retrieve_last_token()
     # ... for the first time ...
     if last_token_data['access_token']:
         # ... time passes ...
         if time.time() > float(last_token_data["token_expires_at"]):
             print('=====> Token has expired, let\'s get a new one')
-            refresh_response = client.refresh_access_token(client_id=strava_client_id, client_secret=strava_client_secret,
-                refresh_token=last_token_data.refresh_token)
+            refresh_response = client.refresh_access_token(strava_client_id, strava_client_secret, last_token_data['refresh_token'])
             access_token = refresh_response['access_token']
             refresh_token = refresh_response['refresh_token']
             expires_at = refresh_response['expires_at']
-            SheetReaderWriter.store_access_token(access_token,expires_at,refresh_token)
+            dbaccess.store_access_token(access_token,expires_at,refresh_token)
         else:
             print('=====> Previous token was still valid')
             client.access_token=last_token_data['access_token']
@@ -94,19 +95,32 @@ def check_token():
     else:
         get_initial_token()
 
-def get_last_activities():
-    print('=====> retrieve last 10 activities')
-    activities=client.get_activities(None,None,1000)
-    
-    for activity in activities:
-        last_activity=activities.next().to_dict()
-        del last_activity['athlete']
-        del last_activity['map']
-        pp.pprint(last_activity)
-        SheetReaderWriter.append_an_activity(last_activity)
+def transform_activity(activity):
+    result = deque()
+    dict_originalActivity = activity.to_dict()
+    for key in dict_originalActivity:
+        if key == 'athlete':
+            'toto'#do nothing
+        elif key == 'map':
+            'toto'#do nothing
+        else:
+            result.append((key,dict_originalActivity[key]))
 
+    result.appendleft(('id',activity.id))
+    print(result)
+    return result
+
+
+def retrieve_and_store_activities():
+    print('=====> retrieve last 10 activities')
+    activities=client.get_activities(None, None, 10)
+    for activity in activities:
+        dbaccess.append_an_activity(transform_activity(activity))
+
+        #
+        # del current_activity['athlete']
+        # del current_activity['map']
 
 say_hello()
 check_token()
-print_athlete()
-get_last_activities()
+retrieve_and_store_activities()

@@ -3,6 +3,7 @@ from stravalib.model import Activity
 from collections import deque
 import SheetRW as dbaccess
 import time
+import weather
 from BergoladeConfig import *
 # Print nicely
 import pprint
@@ -12,6 +13,7 @@ client = Client()
 # Have the user click the authorization URL, a 'code' param will be added to the redirect_uri
 # .....
 pp = pprint.PrettyPrinter()
+
 
 def say_hello():
     print(""" ██╗      █████╗         ██████╗ ███████╗██████╗  ██████╗  ██████╗ ██╗      █████╗ ██████╗ ███████╗
@@ -53,15 +55,19 @@ Y8 .    . .  `-._      `--.__|..   @     |      Y8   .  . . . . . . .  .  8Y
           \"\"\"\"\"\"                                          \"\"\"\"\"\"\" 
 """)
 
+
 def print_athlete():
     athlete = client.get_athlete()
-    print("For {firstname} {lastname}, I now have an access token {token}".format(firstname=athlete.firstname,lastname=athlete.lastname, token=client.access_token))
+    print("For {firstname} {lastname}, I now have an access token {token}".format(firstname=athlete.firstname,
+                                                                                  lastname=athlete.lastname,
+                                                                                  token=client.access_token))
 
 
 def get_initial_token():
     print('=====> No token before, this is the first one (ever)')
     # Extract the code from your webapp response
-    token_response = client.exchange_code_for_token(client_id=strava_client_id, client_secret=strava_client_secret, code=strava_user_code)
+    token_response = client.exchange_code_for_token(client_id=strava_client_id, client_secret=strava_client_secret,
+                                                    code=strava_user_code)
     # Let's store that short-lived access token somewhere 
     client.access_token = token_response['access_token']
     # You must also store the refresh token to be used later on to obtain another valid access token 
@@ -75,51 +81,69 @@ def get_initial_token():
 
 
 def check_token():
-    last_token_data=dbaccess.retrieve_last_token()
+    last_token_data = dbaccess.retrieve_last_token()
     # ... for the first time ...
     if last_token_data['access_token']:
         # ... time passes ...
         if time.time() > float(last_token_data["token_expires_at"]):
             print('=====> Token has expired, let\'s get a new one')
-            refresh_response = client.refresh_access_token(strava_client_id, strava_client_secret, last_token_data['refresh_token'])
+            refresh_response = client.refresh_access_token(strava_client_id, strava_client_secret,
+                                                           last_token_data['refresh_token'])
             access_token = refresh_response['access_token']
             refresh_token = refresh_response['refresh_token']
             expires_at = refresh_response['expires_at']
-            dbaccess.store_access_token(access_token,expires_at,refresh_token)
+            dbaccess.store_access_token(access_token, expires_at, refresh_token)
         else:
             print('=====> Previous token was still valid')
-            client.access_token=last_token_data['access_token']
-            client.token_expires_at=last_token_data['token_expires_at']
-            client.refresh_token=last_token_data['refresh_token']
+            client.access_token = last_token_data['access_token']
+            client.token_expires_at = last_token_data['token_expires_at']
+            client.refresh_token = last_token_data['refresh_token']
 
     else:
         get_initial_token()
 
+
 def transform_activity(activity):
+    print('=====> Processing activity id:', activity.id)
+    detailed_activity = client.get_activity(activity.id)
     result = deque()
     dict_originalActivity = activity.to_dict()
-    for key in dict_originalActivity:
-        if key == 'athlete':
-            'toto'#do nothing
-        elif key == 'map':
-            'toto'#do nothing
-        else:
-            result.append((key,dict_originalActivity[key]))
 
-    result.appendleft(('id',activity.id))
+    for key in dict_originalActivity:
+        if key in activity_keys_to_drop:
+            'Just drop it'  # we do nothing with those
+        elif key == 'map':
+            result.append(('simple_map', activity.map.summary_polyline))
+            result.append((key, detailed_activity.map.polyline))
+        elif key == 'gear':
+            result.append(('gear_name', detailed_activity.gear.name))
+        elif key == 'photos':
+            result.append(('photos_count', detailed_activity.photos.count))
+            if detailed_activity.photos.count > 0:
+                result.append(('photo_urls', detailed_activity.photos.primary.urls['600']))
+            else:
+                result.append(('photo_urls', '')) # in order to keep a correct alignment in the table between column name and value
+        else:
+            result.append((key, dict_originalActivity[key]))
+
+    # add some extra fields :
+    result.appendleft(('id', activity.id))
+
+    # Append weather information if activity is close to now:
+    # if (activity.startdate - time.now())>1000 ...
+    activity_weather = weather.get_weather(str(activity.start_latitude), str(activity.start_longitude))
+    for key in activity_weather:
+        result.append((key, activity_weather[key]))
     print(result)
     return result
 
 
 def retrieve_and_store_activities():
-    print('=====> retrieve last 10 activities')
-    activities=client.get_activities(None, None, 10)
+    print('=====> retrieve last activities')
+    activities = client.get_activities(None, None, 100)
     for activity in activities:
         dbaccess.append_an_activity(transform_activity(activity))
 
-        #
-        # del current_activity['athlete']
-        # del current_activity['map']
 
 say_hello()
 check_token()

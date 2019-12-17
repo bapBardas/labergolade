@@ -22,13 +22,18 @@ def append_an_activity(activity):
 
     activitiessheet.update_row(next_row, valeurs)
 
-#def activity_already_exists(id):
-    #activitiessheet = sheet.worksheet('title', 'activities')
+
+def activity_already_exists(id):
+    first_column = sheet.worksheet('title', 'activities').get_col(1)
+    if str(id) in first_column:
+        return True
+    else:
+        return False
 
 
 def initiate_headers():
-    activitiessheet = sheet.worksheet('title', 'activities')
-    activitiessheet.update_row(1, sheet_headers)
+    activities_sheet = sheet.worksheet('title', 'activities')
+    activities_sheet.update_row(1, sheet_headers)
 
 
 def next_available_row(worksheet):

@@ -17,7 +17,7 @@ def get_weather(latitude: str, longitude: str):
     #print(found_weather)
 
 
-    if found_weather["cod"] == "200":
+    if found_weather['cod'] == 200:
 
         current_temperature = found_weather["main"]["temp"]
         current_humidiy = found_weather["main"]["humidity"]
@@ -26,7 +26,9 @@ def get_weather(latitude: str, longitude: str):
         sunrise = datetime.fromtimestamp(found_weather['sys']['sunrise']).isoformat()
         sunset = datetime.fromtimestamp(found_weather['sys']['sunset']).isoformat()
         report_date = datetime.fromtimestamp(found_weather['dt']).isoformat()
-        visibility = found_weather['visibility']
+        visibility = 'N/A'
+        if 'visibility' in found_weather:
+            visibility = found_weather['visibility']
         wind_speed = found_weather['wind']['speed']
         wind_deg = found_weather['wind']['deg']
 
@@ -48,3 +50,6 @@ def get_weather(latitude: str, longitude: str):
     else:
         print("Error in retrieving weather data: ", found_weather)
         return {}
+
+
+get_weather('1,494323','43,56543')

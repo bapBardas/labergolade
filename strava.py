@@ -4,6 +4,7 @@ from collections import deque
 import SheetRW as dbaccess
 import time
 import weather
+import datetime
 from BergoladeConfig import *
 # Print nicely
 import pprint
@@ -130,19 +131,23 @@ def transform_activity(activity):
     result.appendleft(('id', activity.id))
 
     # Append weather information if activity is close to now:
-    # if (activity.startdate - time.now())>1000 ...
-    activity_weather = weather.get_weather(str(activity.start_latitude), str(activity.start_longitude))
-    for key in activity_weather:
-        result.append((key, activity_weather[key]))
+    difference = datetime.datetime.now() - (activity.start_date_local + activity.elapsed_time)
+    if (difference.total_seconds()) < 3600:
+        print('=====> This is a recent activity, we retrieve the weather report')
+        activity_weather = weather.get_weather(str(activity.end_latlng[0]), str(activity.end_latlng[1]))
+        for key in activity_weather:
+            result.append((key, activity_weather[key]))
+
     print(result)
     return result
 
 
 def retrieve_and_store_activities():
-    print('=====> retrieve last activities')
-    activities = client.get_activities(None, None, 100)
+    print('=====> retrieve last activities if any new one')
+    activities = client.get_activities(None, None, 5)
     for activity in activities:
-        dbaccess.append_an_activity(transform_activity(activity))
+        if not dbaccess.activity_already_exists(activity.id):
+            dbaccess.append_an_activity(transform_activity(activity))
 
 
 say_hello()

@@ -2,7 +2,7 @@ import pygsheets
 import pprint
 from BergoladeConfig import *
 
-gc = pygsheets.authorize(service_file='/Users/bap/Documents/workspace/labergolade/stravapp-sa.json')
+gc = pygsheets.authorize(service_file='stravapp-sa.json')
 pp = pprint.PrettyPrinter()
 
 # Open spreadsheet

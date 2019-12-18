@@ -150,6 +150,7 @@ def retrieve_and_store_activities():
             dbaccess.append_an_activity(transform_activity(activity))
 
 
-say_hello()
-check_token()
-retrieve_and_store_activities()
+def stravapp(request):
+    say_hello()   # disable that if in GCP
+    check_token()
+    retrieve_and_store_activities()

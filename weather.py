@@ -4,6 +4,7 @@
 from BergoladeConfig import *
 import requests
 from datetime import datetime
+from pytz import timezone
 
 api_key = openweather_api_key
 base_url = "https://api.openweathermap.org/data/2.5/weather?"
@@ -14,8 +15,7 @@ def get_weather(latitude: str, longitude: str):
     complete_url = base_url + "appid=" + api_key + "&lat=" + latitude + "&lon=" + longitude + "&units=metric"
 
     found_weather = requests.get(complete_url).json()
-    #print(found_weather)
-
+    # print(found_weather)
 
     if found_weather['cod'] == 200:
 
@@ -23,9 +23,9 @@ def get_weather(latitude: str, longitude: str):
         current_humidiy = found_weather["main"]["humidity"]
         details = found_weather["weather"]
         weather_description = details[0]["description"]
-        sunrise = datetime.fromtimestamp(found_weather['sys']['sunrise']).isoformat()
-        sunset = datetime.fromtimestamp(found_weather['sys']['sunset']).isoformat()
-        report_date = datetime.fromtimestamp(found_weather['dt']).isoformat()
+        sunrise = datetime.fromtimestamp(found_weather['sys']['sunrise'], timezone.utc).isoformat()
+        sunset = datetime.fromtimestamp(found_weather['sys']['sunset'], timezone.utc).isoformat()
+        report_date = datetime.fromtimestamp(found_weather['dt'], timezone.utc).isoformat()
         visibility = 'N/A'
         if 'visibility' in found_weather:
             visibility = found_weather['visibility']
@@ -36,7 +36,7 @@ def get_weather(latitude: str, longitude: str):
             "weather_report_date": report_date,
             "temperature": current_temperature,
             "humidity": current_humidiy,
-            "description": weather_description,
+            "weather_description": weather_description,
             "sunrise": sunrise,
             "sunset": sunset,
             "visibility": visibility,
@@ -51,5 +51,4 @@ def get_weather(latitude: str, longitude: str):
         print("Error in retrieving weather data: ", found_weather)
         return {}
 
-
-get_weather('1,494323','43,56543')
+# test : get_weather('1,494323','43,56543')

@@ -117,7 +117,10 @@ def transform_activity(activity):
             result.append(('simple_map', activity.map.summary_polyline))
             result.append((key, detailed_activity.map.polyline))
         elif key == 'gear':
-            result.append(('gear_name', detailed_activity.gear.name))
+            if detailed_activity.gear and detailed_activity.gear.name:
+                result.append(('gear_name', detailed_activity.gear.name))
+            else:
+                result.append(('gear_name', ''))
         elif key == 'photos':
             result.append(('photos_count', detailed_activity.photos.count))
             if detailed_activity.photos.count > 0:
@@ -142,15 +145,26 @@ def transform_activity(activity):
     return result
 
 
-def retrieve_and_store_activities():
+def retrieve_and_store_last_activities():
     print('=====> retrieve last activities if any new one')
     activities = client.get_activities(None, None, 5)
     for activity in activities:
         if not dbaccess.activity_already_exists(activity.id):
             dbaccess.append_an_activity(transform_activity(activity))
 
+def retrieve_and_store_archives():
+    print('=====> retrieve 2000 last archives')
+    activities = client.get_activities(None, None, 2000)
+    for activity in activities:
+        if not dbaccess.activity_already_exists(activity.id):
+            dbaccess.append_an_activity(transform_activity(activity))
+
 
 def stravapp(request):
-    say_hello()   # disable that if in GCP
+    # say_hello()   # disable that if in GCP
     check_token()
-    retrieve_and_store_activities()
+    retrieve_and_store_last_activities()
+    return 'Done'
+
+
+stravapp('toto')

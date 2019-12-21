@@ -4,7 +4,6 @@
 from BergoladeConfig import *
 import requests
 from datetime import datetime
-from pytz import timezone
 
 api_key = openweather_api_key
 base_url = "https://api.openweathermap.org/data/2.5/weather?"
@@ -23,9 +22,9 @@ def get_weather(latitude: str, longitude: str):
         current_humidiy = found_weather["main"]["humidity"]
         details = found_weather["weather"]
         weather_description = details[0]["description"]
-        sunrise = datetime.fromtimestamp(found_weather['sys']['sunrise'], timezone.utc).isoformat()
-        sunset = datetime.fromtimestamp(found_weather['sys']['sunset'], timezone.utc).isoformat()
-        report_date = datetime.fromtimestamp(found_weather['dt'], timezone.utc).isoformat()
+        sunrise = datetime.fromtimestamp(found_weather['sys']['sunrise']).isoformat()
+        sunset = datetime.fromtimestamp(found_weather['sys']['sunset']).isoformat()
+        report_date = datetime.fromtimestamp(found_weather['dt']).isoformat()
         visibility = 'N/A'
         if 'visibility' in found_weather:
             visibility = found_weather['visibility']
@@ -37,8 +36,8 @@ def get_weather(latitude: str, longitude: str):
             "temperature": current_temperature,
             "humidity": current_humidiy,
             "weather_description": weather_description,
-            "sunrise": sunrise,
-            "sunset": sunset,
+            "sunrise(utc)": sunrise,
+            "sunset(utc)": sunset,
             "visibility": visibility,
             "wind_speed": wind_speed,
             "wind_deg": wind_deg

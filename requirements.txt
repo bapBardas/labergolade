@@ -2,5 +2,3 @@ stravalib
 pygsheets
 requests
 datetime
-pytz
-geonames

@@ -14,6 +14,7 @@ client = Client()
 # Have the user click the authorization URL, a 'code' param will be added to the redirect_uri
 # .....
 pp = pprint.PrettyPrinter()
+start_time = time.time()
 
 
 def say_hello():
@@ -105,7 +106,7 @@ def check_token():
 
 
 def transform_activity(activity):
-    print('=====> Processing activity id:', activity.id)
+    print('=====> Processing activity id: {0}, {1}seconds', activity.id, (time.time() - start_time))
     detailed_activity = client.get_activity(activity.id)
     result = deque()
     dict_originalActivity = activity.to_dict()
@@ -126,7 +127,7 @@ def transform_activity(activity):
             if detailed_activity.photos.count > 0:
                 result.append(('photo_urls', detailed_activity.photos.primary.urls['600']))
             else:
-                result.append(('photo_urls', '')) # in order to keep a correct alignment in the table between column name and value
+                result.append(('photo_urls', ''))  # in order to keep a correct alignment in the table between column name and value
         else:
             result.append((key, dict_originalActivity[key]))
 
@@ -136,7 +137,7 @@ def transform_activity(activity):
     # Append weather information if activity is close to now:
     difference = datetime.datetime.now() - (activity.start_date_local + activity.elapsed_time)
     if (difference.total_seconds()) < 3600:
-        print('=====> This is a recent activity, we retrieve the weather report')
+        print('=====> This is a recent activity, we retrieve the current weather report')
         activity_weather = weather.get_weather(str(activity.end_latlng[0]), str(activity.end_latlng[1]))
         for key in activity_weather:
             result.append((key, activity_weather[key]))
@@ -146,24 +147,47 @@ def transform_activity(activity):
 
 
 def retrieve_and_store_last_activities():
-    print('=====> retrieve last activities if any new one')
+    print('=====> retrieve last activities if any new one: %s seconds ' % (time.time() - start_time))
     activities = client.get_activities(None, None, 5)
+    raw_ids = dbaccess.retrieve_raw_ids()
     for activity in activities:
-        if not dbaccess.activity_already_exists(activity.id):
-            dbaccess.append_an_activity(transform_activity(activity))
+        if str(activity.id) not in raw_ids:
+            dbaccess.append_raw_activity(transform_activity(activity))
+
 
 def retrieve_and_store_archives():
     print('=====> retrieve 2000 last archives')
     activities = client.get_activities(None, None, 2000)
+    raw_ids = dbaccess.retrieve_raw_ids()
     for activity in activities:
-        if not dbaccess.activity_already_exists(activity.id):
-            dbaccess.append_an_activity(transform_activity(activity))
+        if str(activity.id) not in raw_ids:
+            dbaccess.append_raw_activity(transform_activity(activity))
+
+
+def convert_activity_to_gold(raw_activity_id):
+    raw_activity = dbaccess.retrieve_raw_activity_row(raw_activity_id)
+    result = raw_activity.copy()
+
+    # Convertion :
+    result[3] = round(float(result[3])/1000, 2)   # convert Distance to km
+    result[32] = round(float(result[32]) * 3.6, 2)  # convert average speed to km/h
+    result[33] = round(float(result[33]) * 3.6, 2)  # convert max speed to km/h
+
+    dbaccess.append_gold_activity(result)
+
+
+def convert_raw_to_gold():
+    print('=====> Converting raw to gold : %s seconds ' % (time.time() - start_time))
+    activities_to_convert = dbaccess.activities_to_convert_ids()
+    for activity_id in activities_to_convert:
+        convert_activity_to_gold(activity_id)
 
 
 def stravapp(request):
     # say_hello()   # disable that if in GCP
     check_token()
     retrieve_and_store_last_activities()
+    convert_raw_to_gold()
     return 'Done'
 
 
